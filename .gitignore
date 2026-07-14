@@ -1,0 +1,16 @@
+# Python 캐시 파일 및 바이트코드
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 파이썬 가상환경
+.venv/
+venv/
+ENV/
+
+# OS/IDE 설정 파일
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
