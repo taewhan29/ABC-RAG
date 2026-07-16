@@ -59,6 +59,7 @@ def load_data() -> pd.DataFrame:
     df["판매가_num"] = df["판매가"].apply(_clean_price)
     df["정가_num"] = df["정가"].apply(_clean_price)
     df["할인율_num"] = pd.to_numeric(df["할인율"], errors="coerce").fillna(0).astype(int)
+    df["판매지수_num"] = pd.to_numeric(df["판매지수"], errors="coerce").fillna(0).astype(int)
     df["출간년도"] = df["출간일"].apply(_normalize_year)
     df["출간월"] = df["출간일"].apply(_normalize_month)
     df["출간년월"] = df["출간일"].apply(_extract_year_month)
