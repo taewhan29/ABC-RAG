@@ -89,12 +89,12 @@ def init_vector_db() -> chromadb.Collection:
         metadata={"hnsw:space": "cosine"}
     )
 
-    # 데이터가 이미 1000개 로드되어 있다면 적재 과정 스킵
-    if collection.count() == 1000:
-        return collection
-
     # 도서 메타데이터 로드
     df = load_data()
+
+    # 데이터가 이미 모두 로드되어 있다면 적재 과정 스킵 (동적으로 데이터 크기 비교)
+    if collection.count() >= len(df):
+        return collection
 
     # 기존 저장된 768차원 임베딩 로드
     vectors = pd.read_csv(VECTORS_PATH, sep="\t", header=None).values
@@ -123,8 +123,8 @@ def init_vector_db() -> chromadb.Collection:
         metadatas.append(meta)
         documents.append(str(row["제목"]))
 
-    # 데이터 일괄 적재
-    collection.add(
+    # 데이터 일괄 적재 (중복 방지를 위해 upsert 사용)
+    collection.upsert(
         ids=ids,
         embeddings=embeddings,
         metadatas=metadatas,
