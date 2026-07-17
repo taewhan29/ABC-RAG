@@ -3,6 +3,7 @@ import sys
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -352,10 +353,27 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.caption(f"총 **{len(df):,}권** 도서 데이터")
 
+    # 페이지 변경 감지 및 최상단 스크롤 초기화 세션 상태 정의
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = "개요"
+
     page = st.sidebar.radio(
         "페이지 선택",
         ["개요", "가격 분석", "출판사 분석", "키워드 검색", "전체 순위", "📚 챗봇 추천"],
     )
+
+    # 사용자가 사이드바를 통해 페이지를 전환했을 때만 스크롤을 맨 위로 초기화
+    if page != st.session_state.current_page:
+        st.session_state.current_page = page
+        js = """
+        <script>
+            var body = window.parent.document.querySelector(".main");
+            if (body) {
+                body.scrollTop = 0;
+            }
+        </script>
+        """
+        components.html(js, height=0)
 
     st.sidebar.markdown("---")
     with st.sidebar.expander("데이터 정보"):
