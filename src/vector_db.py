@@ -92,8 +92,29 @@ def init_vector_db() -> chromadb.Collection:
     # 도서 메타데이터 로드
     df = load_data()
 
-    # 데이터가 이미 모두 로드되어 있다면 적재 과정 스킵 (동적으로 데이터 크기 비교)
-    if collection.count() >= len(df):
+    # 데이터 복구 검증 (기존 캐시된 문서에 한글 깨짐 문자 '\ufffd'나 ''가 있는지 확인)
+    need_rebuild = False
+    if collection.count() > 0:
+        sample = collection.get(limit=5)
+        if sample and "documents" in sample and sample["documents"]:
+            for doc_text in sample["documents"]:
+                if "\ufffd" in doc_text or "" in doc_text or "" in doc_text:
+                    need_rebuild = True
+                    break
+            if need_rebuild:
+                print("[VectorDB] 캐시된 한글 데이터가 깨져 있는 것이 감지되어 DB를 재구축합니다.")
+
+    # 재구축이 필요하면 기존 컬렉션을 삭제하고 재생성
+    if need_rebuild:
+        try:
+            client.delete_collection(name="yes24_books")
+        except Exception:
+            pass
+        collection = client.get_or_create_collection(
+            name="yes24_books",
+            metadata={"hnsw:space": "cosine"}
+        )
+    elif collection.count() >= len(df):
         return collection
 
     # 기존 저장된 768차원 임베딩 로드
