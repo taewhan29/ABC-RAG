@@ -17,3 +17,9 @@ Thumbs.db
 
 # ChromaDB 로컬 DB 저장소
 data/chromadb_store/
+
+# Node.js / Bun 의존성
+node_modules/
+bun.lock
+*.pptx
+
