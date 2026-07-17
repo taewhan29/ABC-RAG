@@ -333,7 +333,8 @@ def page_chatbot(df: pd.DataFrame):
         has_max_sale = conditions.get("max_sale_index") is not None
         has_sort = conditions.get("sort_by") is not None
         
-        if has_min_price or has_max_price or has_min_sale or has_max_sale or has_sort:
+        # [개선] 가격이나 판매지수 필터 조건이 존재할 때만 수치 필터 쿼리로 판정 (단순 정렬은 벡터 의미 검색 유지)
+        if has_min_price or has_max_price or has_min_sale or has_max_sale:
             is_numeric_query = True
             if has_min_price and has_max_price:
                 applied_filters.append(f"가격: {conditions['min_price']:,}원 ~ {conditions['max_price']:,}원")
@@ -362,11 +363,33 @@ def page_chatbot(df: pd.DataFrame):
         if is_numeric_query:
             with st.spinner("📊 수치 조건에 맞는 도서를 직접 필터링하고 있습니다..."):
                 similar_books = query_books_by_numeric_conditions(df, conditions)
-                response = chat_with_groq(client, similar_books, user_input, model)
         else:
             with st.spinner("🔍 관련 도서를 벡터 공간에서 검색하고 있습니다..."):
                 similar_books = search_similar_books(user_input, top_n=5)
-                response = chat_with_groq(client, similar_books, user_input, model)
+
+        # 💡 [2중 안전 장치 (Fallback)] 벡터 검색이나 필터링 결과가 아예 0건인 경우
+        # 질문에서 직접 명사 키워드를 파싱하여 Pandas의 단순 매칭 방식으로 백업 도서를 매칭 및 수급
+        if not similar_books:
+            import re
+            extracted_keywords = [w for w in re.findall(r'[가-힣a-zA-Z0-9]+', user_input) if len(w) > 1]
+            stop_words = {"추천", "도서", "검색", "관련", "책", "있어", "보여줘", "알려줘", "배우기", "공부", "질문", "해달라고", "해줘", "보여"}
+            keywords = [k for k in extracted_keywords if k not in stop_words]
+            
+            if keywords:
+                fallback_conditions = {
+                    "keywords": keywords[0],
+                    "min_price": None,
+                    "max_price": None,
+                    "min_sale_index": None,
+                    "max_sale_index": None,
+                    "sort_by": "sale_index" if "인기" in user_input or "베스트" in user_input else None,
+                    "sort_order": "desc"
+                }
+                # 수치 필터 매칭 함수를 재활용하여 키워드가 포함된 도서 수급
+                similar_books = query_books_by_numeric_conditions(df, fallback_conditions)
+
+        # 최종 Groq LLM 대화 생성
+        response = chat_with_groq(client, similar_books, user_input, model)
     except Exception as e:
         error_msg = f"API 호출 중 오류가 발생했습니다: {str(e)}"
         render_chat_message("assistant", error_msg)
